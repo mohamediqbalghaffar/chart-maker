@@ -261,10 +261,10 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen mesh-gradient flex flex-col font-sans selection:bg-primary/20">
+    <div className="h-screen w-screen overflow-hidden mesh-gradient flex flex-col font-sans selection:bg-primary/20">
       {/* Premium Header/Toolbar */}
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-white/50 shadow-sm px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <header className="z-50 bg-white/80 backdrop-blur-xl border-b border-white/50 shadow-sm px-4 md:px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-4 flex-shrink-0">
+        <div className="flex items-center gap-3 w-full md:w-auto justify-center md:justify-start">
           <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary/30">
             <FileText size={20} />
           </div>
@@ -275,7 +275,7 @@ function App() {
         </div>
 
         {/* Central Controls Group */}
-        <div className="flex items-center gap-2 p-1.5 bg-slate-100/50 rounded-2xl border border-slate-200/50 backdrop-blur-md">
+        <div className="flex items-center gap-2 p-1.5 bg-slate-100/50 rounded-2xl border border-slate-200/50 backdrop-blur-md w-full md:w-auto overflow-x-auto no-scrollbar">
 
           {/* Chart Layout Dropdown */}
           <div className="relative">
@@ -384,7 +384,7 @@ function App() {
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 w-full md:w-auto justify-center">
           <div className="relative">
             <button
               onClick={() => { setShowDownloadMenu(!showDownloadMenu); setShowPageSetup(false); setShowLayoutMenu(false); }}

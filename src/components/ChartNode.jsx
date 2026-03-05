@@ -111,21 +111,49 @@ const ChartNode = ({ node, level, onUpdate, onAddChild, onDelete, editMode, char
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
                         transition={{ duration: 0.3 }}
-                        className={childrenContainerClass}
+                        className={isOrgChart ? "flex flex-row justify-center relative mt-8" : childrenContainerClass}
                     >
-                        {node.children.map((child, index) => (
-                            <div key={child.id} className={childItemClass}>
-                                <ChartNode
-                                    node={child}
-                                    level={level + 1}
-                                    onUpdate={onUpdate}
-                                    onAddChild={onAddChild}
-                                    onDelete={onDelete}
-                                    editMode={editMode}
-                                    chartLayout={chartLayout}
-                                />
-                            </div>
-                        ))}
+                        {isOrgChart && (
+                            <div className="absolute -top-8 left-1/2 -ml-[1px] w-[2px] h-8 bg-slate-300" />
+                        )}
+                        {node.children.map((child, index) => {
+                            if (isOrgChart) {
+                                return (
+                                    <div key={child.id} className="relative flex flex-col items-center px-4 pt-8">
+                                        {node.children.length > 1 && (
+                                            <div className={`absolute top-0 h-[2px] bg-slate-300 ${index === 0 ? 'left-1/2 right-0' :
+                                                    index === node.children.length - 1 ? 'left-0 right-1/2' :
+                                                        'left-0 right-0'
+                                                }`} />
+                                        )}
+                                        <div className="absolute top-0 left-1/2 -ml-[1px] w-[2px] h-8 bg-slate-300" />
+                                        <ChartNode
+                                            node={child}
+                                            level={level + 1}
+                                            onUpdate={onUpdate}
+                                            onAddChild={onAddChild}
+                                            onDelete={onDelete}
+                                            editMode={editMode}
+                                            chartLayout={chartLayout}
+                                        />
+                                    </div>
+                                );
+                            }
+
+                            return (
+                                <div key={child.id} className={childItemClass}>
+                                    <ChartNode
+                                        node={child}
+                                        level={level + 1}
+                                        onUpdate={onUpdate}
+                                        onAddChild={onAddChild}
+                                        onDelete={onDelete}
+                                        editMode={editMode}
+                                        chartLayout={chartLayout}
+                                    />
+                                </div>
+                            );
+                        })}
                     </motion.div>
                 )}
             </AnimatePresence>
