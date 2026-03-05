@@ -13,26 +13,31 @@ const ChartNode = ({ node, level, onUpdate, onAddChild, onDelete, editMode }) =>
     const levelClass = `level-${Math.min(level, 4)}`;
 
     return (
-        <div className="flex flex-col mb-2 relative">
+        <motion.div
+            layout
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col mb-4 relative"
+        >
             <div
                 className={`
-          flex items-center gap-3 p-3 rounded-xl shadow-sm border-2 transition-all duration-300
-          ${levelClass} ${editMode ? 'cursor-default' : 'cursor-pointer hover:-translate-y-1 hover:shadow-md'}
-          ${node.isEmpty ? 'border-dashed opacity-70 bg-slate-800/5' : 'text-white'}
+          flex items-center gap-4 p-4 rounded-2xl shadow-xl border-t border-white/30 transition-all duration-500
+          ${levelClass} ${editMode ? 'cursor-default' : 'cursor-pointer node-hover'}
+          ${node.isEmpty ? 'bg-white/10 border-dashed border-slate-300' : ''}
         `}
                 onClick={() => !editMode && hasChildren && setIsExpanded(!isExpanded)}
             >
                 {hasChildren && (
                     <button
                         onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }}
-                        className="flex-shrink-0 hover:bg-white/10 rounded p-1 transition-colors"
+                        className="flex-shrink-0 hover:bg-white/20 rounded-lg p-1.5 transition-colors"
                     >
-                        {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                        {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
                     </button>
                 )}
 
                 <div className="flex flex-col flex-1 min-w-0">
-                    <span className="text-[10px] uppercase tracking-wider font-bold opacity-80 font-mono">
+                    <span className="text-[10px] uppercase tracking-[0.2em] font-black opacity-60 font-mono mb-0.5">
                         {node.code}
                     </span>
                     {editMode ? (
@@ -40,33 +45,33 @@ const ChartNode = ({ node, level, onUpdate, onAddChild, onDelete, editMode }) =>
                             type="text"
                             value={node.name}
                             onChange={handleNameChange}
-                            className="bg-transparent border-none outline-none font-semibold text-sm w-full focus:bg-white/20 rounded px-1"
+                            className="bg-white/10 border-none outline-none font-bold text-base w-full focus:bg-white/20 rounded-lg px-2 py-1 placeholder-white/50"
                             autoFocus={node.name === 'New Item'}
                             onClick={(e) => e.stopPropagation()}
                         />
                     ) : (
-                        <span className="text-sm font-semibold truncate">
+                        <span className="text-base font-bold tracking-tight">
                             {node.name}
                         </span>
                     )}
                 </div>
 
                 {editMode && (
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-2">
                         <button
                             onClick={(e) => { e.stopPropagation(); onAddChild(node.id); }}
-                            className="p-1 hover:bg-white/20 rounded text-white"
+                            className="p-2 bg-white/10 hover:bg-white/20 rounded-xl text-white transition-all hover:scale-110 active:scale-95"
                             title="Add child"
                         >
-                            <Plus size={16} />
+                            <Plus size={18} />
                         </button>
                         {level > 0 && (
                             <button
                                 onClick={(e) => { e.stopPropagation(); onDelete(node.id); }}
-                                className="p-1 hover:bg-red-500/40 rounded text-white"
+                                className="p-2 bg-rose-500/20 hover:bg-rose-500/40 rounded-xl text-white transition-all hover:scale-110 active:scale-95"
                                 title="Delete node"
                             >
-                                <Trash2 size={16} />
+                                <Trash2 size={18} />
                             </button>
                         )}
                     </div>
@@ -76,26 +81,33 @@ const ChartNode = ({ node, level, onUpdate, onAddChild, onDelete, editMode }) =>
             <AnimatePresence>
                 {isExpanded && hasChildren && (
                     <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        className="ml-8 mt-2 flex flex-col gap-1 overflow-hidden"
+                        initial={{ height: 0, opacity: 0, x: -20 }}
+                        animate={{ height: 'auto', opacity: 1, x: 0 }}
+                        exit={{ height: 0, opacity: 0, x: -20 }}
+                        transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+                        className="ml-10 mt-3 flex flex-col gap-2 border-l-2 border-slate-200/50 pl-6 overflow-hidden"
                     >
-                        {node.children.map((child) => (
-                            <ChartNode
+                        {node.children.map((child, index) => (
+                            <motion.div
                                 key={child.id}
-                                node={child}
-                                level={level + 1}
-                                onUpdate={onUpdate}
-                                onAddChild={onAddChild}
-                                onDelete={onDelete}
-                                editMode={editMode}
-                            />
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: index * 0.05 }}
+                            >
+                                <ChartNode
+                                    node={child}
+                                    level={level + 1}
+                                    onUpdate={onUpdate}
+                                    onAddChild={onAddChild}
+                                    onDelete={onDelete}
+                                    editMode={editMode}
+                                />
+                            </motion.div>
                         ))}
                     </motion.div>
                 )}
             </AnimatePresence>
-        </div>
+        </motion.div>
     );
 };
 

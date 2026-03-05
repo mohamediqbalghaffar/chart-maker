@@ -143,70 +143,102 @@ function App() {
   }, []);
 
   const handleDownload = async (format, options = {}) => {
+    if (isDownloading) return;
     setIsDownloading(true);
     setShowDownloadMenu(false);
 
+    // Give the UI a moment to close the menu and update state
+    await new Promise(resolve => setTimeout(resolve, 100));
+
     try {
       const element = chartRef.current;
-
-      // Capture the element at full resolution (reset scale temporarily)
       const originalTransform = element.style.transform;
+
+      // Reset scale for high-res capture
       element.style.transform = 'none';
 
       const canvas = await html2canvas(element, {
-        scale: 2, // High resolution
+        scale: 3, // Even higher resolution
         useCORS: true,
-        backgroundColor: '#ffffff',
+        backgroundColor: '#f8fafc', // Use a clean background
         logging: false,
         onclone: (clonedDoc) => {
           const clonedElement = clonedDoc.querySelector('[data-chart-container]');
           if (clonedElement) {
             clonedElement.style.transform = 'none';
             clonedElement.style.width = 'auto';
-            clonedElement.style.padding = '40px';
+            clonedElement.style.padding = '60px';
+            // Force animations to end and remove glass effects that struggle in export
+            clonedElement.querySelectorAll('*').forEach(el => {
+              el.style.animation = 'none';
+              el.style.transition = 'none';
+              el.style.backdropFilter = 'none';
+            });
           }
         }
       });
 
       element.style.transform = originalTransform;
 
-      const title = data.name.replace(/\s+/g, '_');
+      const title = data.name.replace(/\s+/g, '_') || 'chart';
+      const timestamp = new Date().toISOString().split('T')[0];
+      const filename = `${title}_${timestamp}`;
 
       if (format === 'pdf') {
-        const { orientation = 'p', unit = 'mm', format: pageSize = 'a4' } = options;
-        const pdf = new jsPDF(orientation, unit, pageSize);
-        const imgData = canvas.toDataURL('image/jpeg', 1.0);
+        const { orientation = 'p' } = options;
+        const pdf = new jsPDF({
+          orientation: orientation,
+          unit: 'mm',
+          format: 'a4'
+        });
 
+        const imgData = canvas.toDataURL('image/jpeg', 1.0);
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = pdf.internal.pageSize.getHeight();
-        const imgProps = pdf.getImageProperties(imgData);
-        const ratio = imgProps.width / imgProps.height;
-        const width = pdfWidth - 20;
-        const height = width / ratio;
 
-        pdf.setFontSize(16);
+        // Calculate dimensions to fit the page while maintaining aspect ratio
+        const imgProps = pdf.getImageProperties(imgData);
+        const margin = 10;
+        const maxWidth = pdfWidth - (margin * 2);
+        const maxHeight = pdfHeight - (margin * 3); // Extra space for title
+
+        let finalWidth = maxWidth;
+        let finalHeight = (imgProps.height * finalWidth) / imgProps.width;
+
+        if (finalHeight > maxHeight) {
+          finalHeight = maxHeight;
+          finalWidth = (imgProps.width * finalHeight) / imgProps.height;
+        }
+
+        const x = (pdfWidth - finalWidth) / 2;
+        const y = 25; // Start below the title
+
+        pdf.setFontSize(20);
+        pdf.setTextColor(30, 41, 59); // slate-800
         pdf.text(data.name, pdfWidth / 2, 15, { align: 'center' });
-        pdf.addImage(imgData, 'JPEG', 10, 25, width, height);
-        pdf.save(`${title}.pdf`);
+
+        pdf.addImage(imgData, 'JPEG', x, y, finalWidth, finalHeight, undefined, 'FAST');
+        pdf.save(`${filename}.pdf`);
       } else {
         const link = document.createElement('a');
-        link.download = `${title}.${format}`;
+        link.download = `${filename}.${format}`;
         link.href = canvas.toDataURL(`image/${format}`, 1.0);
         link.click();
       }
     } catch (err) {
       console.error('Download failed:', err);
+      alert('Download failed. Please try again.');
     } finally {
       setIsDownloading(false);
     }
   };
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-slate-50 overflow-hidden">
-      <header className="glass-panel z-50 mx-4 mt-4 p-4 rounded-xl flex items-center justify-between gap-4 flex-shrink-0">
+    <div className="h-screen w-screen flex flex-col mesh-gradient overflow-hidden">
+      <header className="glass-card z-50 mx-6 mt-6 p-4 rounded-2xl flex items-center justify-between gap-4 flex-shrink-0">
         <div className="flex flex-col">
           <h1 className="text-xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-            <span className="bg-blue-600 text-white p-1.5 rounded-lg flex items-center justify-center">
+            <span className="bg-gradient-to-tr from-blue-600 to-indigo-600 text-white p-2 rounded-xl shadow-lg shadow-blue-200 flex items-center justify-center">
               <FileText size={20} />
             </span>
             {editMode ? (
@@ -216,7 +248,7 @@ function App() {
                 className="bg-transparent border-none outline-none focus:ring-0 w-64 text-xl font-extrabold"
                 placeholder="Chart Title"
               />
-            ) : <span className="text-xl font-extrabold">{data.name}</span>}
+            ) : <span className="text-xl font-black bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600">{data.name}</span>}
           </h1>
         </div>
 
@@ -241,8 +273,8 @@ function App() {
           <button
             onClick={() => setEditMode(!editMode)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all ${editMode
-                ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200 hover:bg-emerald-600'
-                : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+              ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200 hover:bg-emerald-600'
+              : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
               }`}
           >
             {editMode ? <><Check size={18} /> Done</> : <><Edit3 size={18} /> Edit Chart</>}
@@ -252,10 +284,13 @@ function App() {
             <button
               onClick={() => setShowDownloadMenu(!showDownloadMenu)}
               disabled={isDownloading}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm bg-blue-600 text-white shadow-lg shadow-blue-200 hover:bg-blue-700 disabled:opacity-50"
+              className="flex items-center gap-2 px-6 py-2 rounded-xl font-bold text-sm bg-blue-600 text-white shadow-xl shadow-blue-200 hover:bg-blue-700 disabled:opacity-50 transition-all active:scale-95"
             >
-              {isDownloading ? <Loader2 className="animate-spin" size={18} /> : <Download size={18} />}
-              Download
+              {isDownloading ? (
+                <><Loader2 className="animate-spin" size={18} /> Generating...</>
+              ) : (
+                <><Download size={18} /> Download</>
+              )}
             </button>
 
             <AnimatePresence>
