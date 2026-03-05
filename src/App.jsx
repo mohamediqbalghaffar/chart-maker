@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react';
 import ChartNode from './components/ChartNode';
-import { Download, Edit3, Monitor, Tablet, Check, X, FileText, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Download, Edit3, Monitor, Tablet, Check, X, FileText, Image as ImageIcon, Loader2, Maximize } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -49,11 +49,49 @@ function App() {
   const [viewMode, setViewMode] = useState('desktop');
   const [isDownloading, setIsDownloading] = useState(false);
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
+  const [scale, setScale] = useState(1);
   const chartRef = useRef(null);
+  const containerRef = useRef(null);
 
   useEffect(() => {
     localStorage.setItem('wbs_data', JSON.stringify(data));
   }, [data]);
+
+  const updateScale = useCallback(() => {
+    if (!containerRef.current || !chartRef.current) return;
+
+    const container = containerRef.current;
+    const chart = chartRef.current;
+
+    // Temporarily reset scale to measure actual content size
+    const originalTransform = chart.style.transform;
+    chart.style.transform = 'none';
+
+    const contentWidth = chart.offsetWidth;
+    const contentHeight = chart.offsetHeight;
+    const containerWidth = container.offsetWidth - 40; // 20px padding
+    const containerHeight = container.offsetHeight - 40;
+
+    const scaleX = containerWidth / contentWidth;
+    const scaleY = containerHeight / contentHeight;
+    const newScale = Math.min(Math.min(scaleX, scaleY), 1);
+
+    setScale(newScale);
+    chart.style.transform = originalTransform;
+  }, []);
+
+  useLayoutEffect(() => {
+    updateScale();
+    window.addEventListener('resize', updateScale);
+    const observer = new ResizeObserver(updateScale);
+    if (chartRef.current) observer.observe(chartRef.current);
+    if (containerRef.current) observer.observe(containerRef.current);
+
+    return () => {
+      window.removeEventListener('resize', updateScale);
+      observer.disconnect();
+    };
+  }, [updateScale, data, editMode, viewMode]);
 
   const updateNode = useCallback((id, updates) => {
     setData(prev => {
@@ -110,12 +148,27 @@ function App() {
 
     try {
       const element = chartRef.current;
+
+      // Capture the element at full resolution (reset scale temporarily)
+      const originalTransform = element.style.transform;
+      element.style.transform = 'none';
+
       const canvas = await html2canvas(element, {
-        scale: 2,
+        scale: 2, // High resolution
         useCORS: true,
         backgroundColor: '#ffffff',
-        logging: false
+        logging: false,
+        onclone: (clonedDoc) => {
+          const clonedElement = clonedDoc.querySelector('[data-chart-container]');
+          if (clonedElement) {
+            clonedElement.style.transform = 'none';
+            clonedElement.style.width = 'auto';
+            clonedElement.style.padding = '40px';
+          }
+        }
       });
+
+      element.style.transform = originalTransform;
 
       const title = data.name.replace(/\s+/g, '_');
 
@@ -149,8 +202,8 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50">
-      <header className="glass-panel sticky top-4 z-50 mx-4 mt-4 p-4 rounded-xl flex items-center justify-between gap-4">
+    <div className="h-screen w-screen flex flex-col bg-slate-50 overflow-hidden">
+      <header className="glass-panel z-50 mx-4 mt-4 p-4 rounded-xl flex items-center justify-between gap-4 flex-shrink-0">
         <div className="flex flex-col">
           <h1 className="text-xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
             <span className="bg-blue-600 text-white p-1.5 rounded-lg flex items-center justify-center">
@@ -165,9 +218,6 @@ function App() {
               />
             ) : <span className="text-xl font-extrabold">{data.name}</span>}
           </h1>
-          <p className="text-xs text-slate-500 font-medium ml-10">
-            {editMode ? 'Editing WBS Structure' : 'Interactive Org Chart Viewer'}
-          </p>
         </div>
 
         <div className="flex items-center gap-3">
@@ -242,11 +292,20 @@ function App() {
         </div>
       </header>
 
-      <main className="flex-1 overflow-auto p-4 md:p-12 flex justify-center items-start bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:24px_24px]">
+      <main
+        ref={containerRef}
+        className="flex-1 relative flex justify-center items-center p-4 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:24px_24px] overflow-hidden"
+      >
         <div
           ref={chartRef}
-          className={`transition-all duration-500 ease-in-out p-8 bg-white/40 rounded-3xl ${viewMode === 'mobile' ? 'max-w-[480px]' : 'max-w-3xl'
-            } w-full`}
+          data-chart-container
+          style={{
+            transform: `scale(${scale})`,
+            transformOrigin: 'center center',
+            transition: isDownloading ? 'none' : 'transform 0.3s ease-out'
+          }}
+          className={`bg-white/40 rounded-3xl p-8 ${viewMode === 'mobile' ? 'w-[480px]' : 'w-full max-w-4xl'
+            }`}
         >
           <ChartNode
             node={data}
@@ -259,7 +318,7 @@ function App() {
         </div>
       </main>
 
-      <footer className="p-6 text-center text-slate-400 text-xs font-semibold border-t border-slate-100 bg-white">
+      <footer className="p-3 text-center text-slate-400 text-[10px] font-semibold border-t border-slate-100 bg-white flex-shrink-0">
         Solar Chart Builder • Built for Halabja Solar • &copy; 2026
       </footer>
 
