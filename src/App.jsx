@@ -157,21 +157,41 @@ function App() {
       const element = chartRef.current;
       const originalTransform = element.style.transform;
 
-      // Reset scale for high-res capture
+      // Calculate target dimensions for "force fitting"
+      // Using standard 96 DPI for CSS pixels
+      const mmToPx = 3.78;
+      const dims = {
+        a4: { p: [210, 297], l: [297, 210] },
+        a3: { p: [297, 420], l: [420, 297] }
+      };
+
+      const currentOrientation = (options.orientation || orientation) === 'portrait' ? 'p' : 'l';
+      const [wMm, hMm] = dims[paperFormat][currentOrientation];
+      const targetWidth = wMm * mmToPx;
+      const targetHeight = hMm * mmToPx;
+
       element.style.transform = 'none';
 
       const canvas = await html2canvas(element, {
-        scale: 3, // Even higher resolution
+        scale: 3,
         useCORS: true,
-        backgroundColor: '#f8fafc', // Use a clean background
+        backgroundColor: '#f8fafc',
         logging: false,
+        width: targetWidth,
+        height: targetHeight,
         onclone: (clonedDoc) => {
           const clonedElement = clonedDoc.querySelector('[data-chart-container]');
           if (clonedElement) {
             clonedElement.style.transform = 'none';
-            clonedElement.style.width = 'auto';
-            clonedElement.style.padding = '60px';
-            // Force animations to end and remove glass effects that struggle in export
+            clonedElement.style.width = `${targetWidth}px`;
+            clonedElement.style.height = `${targetHeight}px`;
+            clonedElement.style.padding = '40px';
+            clonedElement.style.display = 'flex';
+            clonedElement.style.flexDirection = 'column';
+            clonedElement.style.alignItems = 'center';
+            clonedElement.style.justifyContent = 'center';
+
+            // Force animations and glass effects to clear
             clonedElement.querySelectorAll('*').forEach(el => {
               el.style.animation = 'none';
               el.style.transition = 'none';
@@ -185,42 +205,26 @@ function App() {
 
       const title = data.name.replace(/\s+/g, '_') || 'chart';
       const timestamp = new Date().toISOString().split('T')[0];
-      const filename = `${title}_${timestamp}`;
+      const filename = `${title}_${timestamp}_${paperFormat}_${orientation}`;
 
       if (format === 'pdf') {
-        const { orientation: optOrientation = orientation } = options;
         const pdf = new jsPDF({
-          orientation: optOrientation === 'portrait' ? 'p' : 'l',
+          orientation: currentOrientation,
           unit: 'mm',
           format: paperFormat
         });
 
-        const imgData = canvas.toDataURL('image/jpeg', 1.0);
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = pdf.internal.pageSize.getHeight();
 
-        // Calculate dimensions to fit the page while maintaining aspect ratio
-        const imgProps = pdf.getImageProperties(imgData);
-        const margin = 10;
-        const maxWidth = pdfWidth - (margin * 2);
-        const maxHeight = pdfHeight - (margin * 3); // Extra space for title
-
-        let finalWidth = maxWidth;
-        let finalHeight = (imgProps.height * finalWidth) / imgProps.width;
-
-        if (finalHeight > maxHeight) {
-          finalHeight = maxHeight;
-          finalWidth = (imgProps.width * finalHeight) / imgProps.height;
-        }
-
-        const x = (pdfWidth - finalWidth) / 2;
-        const y = 25; // Start below the title
-
         pdf.setFontSize(20);
-        pdf.setTextColor(30, 41, 59); // slate-800
+        pdf.setTextColor(30, 41, 59);
         pdf.text(data.name, pdfWidth / 2, 15, { align: 'center' });
 
-        pdf.addImage(imgData, 'JPEG', x, y, finalWidth, finalHeight, undefined, 'FAST');
+        // Use full page minus small margins for the chart
+        const margin = 5;
+        pdf.addImage(imgData, 'JPEG', margin, 25, pdfWidth - (margin * 2), pdfHeight - 35, undefined, 'FAST');
         pdf.save(`${filename}.pdf`);
       } else {
         const link = document.createElement('a');
