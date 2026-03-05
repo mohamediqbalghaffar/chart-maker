@@ -3,7 +3,26 @@
 @tailwind utilities;
 
 @layer base {
+
+  /* Node Level Colors */
   :root {
+    --level-0: 22 92% 51%;
+    /* Orange */
+    --level-1: 350 82% 58%;
+    /* Rose */
+    --level-2: 221 83% 53%;
+    /* Blue */
+    --level-3: 160 84% 39%;
+    /* Emerald */
+    --level-4: 262 83% 58%;
+    /* Purple */
+    --level-5: 190 90% 40%;
+    /* Cyan */
+    --level-6: 32 95% 45%;
+    /* Amber */
+    --level-7: 280 80% 50%;
+    /* Indigo */
+
     --primary: 221 83% 53%;
     --primary-foreground: 210 40% 98%;
     --secondary: 210 40% 96%;
@@ -15,6 +34,40 @@
 
   body {
     @apply m-0 min-h-screen bg-slate-50 text-slate-900 font-sans antialiased;
+  }
+}
+
+@layer components {
+  .level-0 {
+    background: linear-gradient(135deg, hsl(var(--level-0)), hsl(22 92% 45%));
+  }
+
+  .level-1 {
+    background: linear-gradient(135deg, hsl(var(--level-1)), hsl(350 82% 50%));
+  }
+
+  .level-2 {
+    background: linear-gradient(135deg, hsl(var(--level-2)), hsl(221 83% 45%));
+  }
+
+  .level-3 {
+    background: linear-gradient(135deg, hsl(var(--level-3)), hsl(160 84% 30%));
+  }
+
+  .level-4 {
+    background: linear-gradient(135deg, hsl(var(--level-4)), hsl(262 83% 50%));
+  }
+
+  .level-5 {
+    background: linear-gradient(135deg, hsl(var(--level-5)), hsl(190 90% 30%));
+  }
+
+  .level-6 {
+    background: linear-gradient(135deg, hsl(var(--level-6)), hsl(32 95% 35%));
+  }
+
+  .level-7 {
+    background: linear-gradient(135deg, hsl(var(--level-7)), hsl(280 80% 40%));
   }
 }
 

@@ -40,6 +40,11 @@ const INITIAL_DATA = {
   ]
 };
 
+const PAPER_DIMENSIONS = {
+  a4: { portrait: { width: 794, height: 1123 }, landscape: { width: 1123, height: 794 } },
+  a3: { portrait: { width: 1123, height: 1587 }, landscape: { width: 1587, height: 1123 } }
+};
+
 function App() {
   const [data, setData] = useState(() => {
     const saved = localStorage.getItem('wbs_data');
@@ -66,22 +71,23 @@ function App() {
     const container = containerRef.current;
     const chart = chartRef.current;
 
-    // Temporarily reset scale to measure actual content size
     const originalTransform = chart.style.transform;
     chart.style.transform = 'none';
 
-    const contentWidth = chart.offsetWidth;
-    const contentHeight = chart.offsetHeight;
-    const containerWidth = container.offsetWidth - 40; // 20px padding
-    const containerHeight = container.offsetHeight - 40;
+    const paperDims = PAPER_DIMENSIONS[paperFormat][orientation];
+    const targetWidth = paperDims.width;
+    const targetHeight = paperDims.height;
 
-    const scaleX = containerWidth / contentWidth;
-    const scaleY = containerHeight / contentHeight;
+    const containerWidth = container.offsetWidth - 80;
+    const containerHeight = container.offsetHeight - 80;
+
+    const scaleX = containerWidth / targetWidth;
+    const scaleY = containerHeight / targetHeight;
     const newScale = Math.min(Math.min(scaleX, scaleY), 1);
 
     setScale(newScale);
     chart.style.transform = originalTransform;
-  }, []);
+  }, [paperFormat, orientation]);
 
   useLayoutEffect(() => {
     updateScale();
@@ -374,13 +380,13 @@ function App() {
           ref={chartRef}
           data-chart-container
           style={{
+            width: `${PAPER_DIMENSIONS[paperFormat][orientation].width}px`,
+            height: `${PAPER_DIMENSIONS[paperFormat][orientation].height}px`,
             transform: `scale(${scale})`,
             transformOrigin: 'center center',
             transition: isDownloading ? 'none' : 'transform 0.3s ease-out'
           }}
-          className={`bg-white/40 rounded-3xl p-12 transition-all duration-500 shadow-inner ${orientation === 'portrait' ? 'aspect-[1/1.414]' : 'aspect-[1.414/1]'
-            } ${paperFormat === 'a3' ? 'max-w-6xl' : 'max-w-4xl'} ${viewMode === 'mobile' ? 'w-[480px]' : 'w-full'
-            }`}
+          className="bg-white/40 rounded-3xl p-12 transition-all duration-500 shadow-inner overflow-auto flex flex-col items-center justify-start"
         >
           <ChartNode
             node={data}

@@ -6,18 +6,25 @@ const ChartNode = ({ node, level, onUpdate, onAddChild, onDelete, editMode }) =>
     const [isExpanded, setIsExpanded] = useState(true);
     const hasChildren = node.children && node.children.length > 0;
 
+    const getColorClass = (lvl) => {
+        const levels = ['level-0', 'level-1', 'level-2', 'level-3', 'level-4', 'level-5', 'level-6', 'level-7'];
+        return levels[lvl % levels.length];
+    };
+
+    const isDeepLevel = level >= 4;
+
     const handleNameChange = (e) => {
         onUpdate(node.id, { name: e.target.value });
     };
 
-    const levelClass = `level-${Math.min(level, 4)}`;
+    const levelClass = getColorClass(level);
 
     return (
         <motion.div
             layout
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col mb-4 relative"
+            className={`flex flex-col mb-4 relative ${isDeepLevel ? 'w-[300px]' : ''}`}
         >
             <div
                 className={`
@@ -81,19 +88,14 @@ const ChartNode = ({ node, level, onUpdate, onAddChild, onDelete, editMode }) =>
             <AnimatePresence>
                 {isExpanded && hasChildren && (
                     <motion.div
-                        initial={{ height: 0, opacity: 0, x: -20 }}
-                        animate={{ height: 'auto', opacity: 1, x: 0 }}
-                        exit={{ height: 0, opacity: 0, x: -20 }}
-                        transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
-                        className="ml-10 mt-3 flex flex-col gap-2 border-l-2 border-slate-200/50 pl-6 overflow-hidden"
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.4 }}
+                        className={`flex ${isDeepLevel ? 'flex-row flex-wrap justify-center gap-4' : 'flex-col gap-3'} ml-4 border-l-2 border-slate-100/50 pl-4 py-2 mt-2`}
                     >
                         {node.children.map((child, index) => (
-                            <motion.div
-                                key={child.id}
-                                initial={{ opacity: 0, x: -10 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: index * 0.05 }}
-                            >
+                            <div key={child.id} className={isDeepLevel ? 'min-w-[280px] max-w-[320px] flex-1' : ''}>
                                 <ChartNode
                                     node={child}
                                     level={level + 1}
@@ -102,7 +104,7 @@ const ChartNode = ({ node, level, onUpdate, onAddChild, onDelete, editMode }) =>
                                     onDelete={onDelete}
                                     editMode={editMode}
                                 />
-                            </motion.div>
+                            </div>
                         ))}
                     </motion.div>
                 )}
