@@ -68,35 +68,35 @@ function App() {
   const updateScale = useCallback(() => {
     if (!containerRef.current || !chartRef.current) return;
 
-    const container = containerRef.current;
     const chart = chartRef.current;
 
-    const originalTransform = chart.style.transform;
-    const originalWidth = chart.style.width;
-    const originalHeight = chart.style.height;
-
-    chart.style.transform = 'none';
-    chart.style.width = 'auto';
+    // 1. Reset scale to measure true natural size
+    chart.style.transform = 'scale(1)';
+    chart.style.width = 'max-content'; // Allow it to expand to its full natural width
     chart.style.height = 'auto';
 
-    // Measure unconstrained content size
+    // 2. Add a tiny delay or use offset to get real dimensions after layout
     const contentWidth = chart.scrollWidth;
     const contentHeight = chart.scrollHeight;
 
-    // Target paper dimensions minus padding
+    // 3. Define the target area (Paper size minus 80px total padding)
     const paperDims = PAPER_DIMENSIONS[paperFormat][orientation];
-    const targetWidth = paperDims.width - 80; // 40px internal padding * 2
-    const targetHeight = paperDims.height - 80;
+    const targetWidth = paperDims.width - 120; // 60px margin on each side
+    const targetHeight = paperDims.height - 120;
 
+    // 4. Calculate the perfect scale factor to fit BOTH dimensions
     const scaleX = targetWidth / contentWidth;
     const scaleY = targetHeight / contentHeight;
-    const newScale = Math.min(Math.min(scaleX, scaleY), 1);
+
+    // Force a fit (never go above 1.1x to avoid blurriness, but ALWAYS fit if larger)
+    const newScale = Math.min(scaleX, scaleY);
 
     setScale(newScale);
 
-    chart.style.transform = originalTransform;
-    chart.style.width = originalWidth;
-    chart.style.height = originalHeight;
+    // 5. Restore fixed dimensions for the "Paper" effect
+    chart.style.width = `${PAPER_DIMENSIONS[paperFormat][orientation].width}px`;
+    chart.style.height = `${PAPER_DIMENSIONS[paperFormat][orientation].height}px`;
+    chart.style.transform = `scale(${newScale})`;
   }, [paperFormat, orientation, data]);
 
   useLayoutEffect(() => {
