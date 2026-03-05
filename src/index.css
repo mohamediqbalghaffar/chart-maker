@@ -20,9 +20,9 @@
 
 .mesh-gradient {
   background-color: #f8fafc;
-  background-image: 
-    radial-gradient(at 0% 0%, hsla(221, 83%, 93%, 1) 0, transparent 50%), 
-    radial-gradient(at 50% 0%, hsla(262, 83%, 93%, 1) 0, transparent 50%), 
+  background-image:
+    radial-gradient(at 0% 0%, hsla(221, 83%, 93%, 1) 0, transparent 50%),
+    radial-gradient(at 50% 0%, hsla(262, 83%, 93%, 1) 0, transparent 50%),
     radial-gradient(at 100% 0%, hsla(199, 89%, 93%, 1) 0, transparent 50%);
 }
 
@@ -34,12 +34,34 @@
   box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
 }
 
-.level-0 { @apply bg-gradient-to-br from-orange-400 to-orange-600 border-white/20 shadow-lg shadow-orange-200/50; }
-.level-1 { @apply bg-gradient-to-br from-rose-400 to-rose-600 border-white/20 shadow-lg shadow-rose-200/50; }
-.level-2 { @apply bg-gradient-to-br from-blue-400 to-blue-600 border-white/20 shadow-lg shadow-blue-200/50; }
-.level-3 { @apply bg-gradient-to-br from-emerald-400 to-emerald-600 border-white/20 shadow-lg shadow-emerald-200/50; }
-.level-4 { @apply bg-gradient-to-br from-violet-400 to-violet-600 border-white/20 shadow-lg shadow-violet-200/50; }
+.level-0 {
+  @apply bg-gradient-to-br from-orange-400 to-orange-600 border-white/20 shadow-lg shadow-orange-200/50;
+}
+
+.level-1 {
+  @apply bg-gradient-to-br from-rose-400 to-rose-600 border-white/20 shadow-lg shadow-rose-200/50;
+}
+
+.level-2 {
+  @apply bg-gradient-to-br from-blue-400 to-blue-600 border-white/20 shadow-lg shadow-blue-200/50;
+}
+
+.level-3 {
+  @apply bg-gradient-to-br from-emerald-400 to-emerald-600 border-white/20 shadow-lg shadow-emerald-200/50;
+}
+
+.level-4 {
+  @apply bg-gradient-to-br from-violet-400 to-violet-600 border-white/20 shadow-lg shadow-violet-200/50;
+}
 
 .node-hover {
   @apply hover:scale-[1.02] hover:-translate-y-1 hover:shadow-xl transition-all duration-300;
+}
+
+.aspect-a-portrait {
+  aspect-ratio: 1 / 1.4142;
+}
+
+.aspect-a-landscape {
+  aspect-ratio: 1.4142 / 1;
 }
