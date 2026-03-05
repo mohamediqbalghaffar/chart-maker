@@ -55,8 +55,10 @@ function App() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
   const [showPageSetup, setShowPageSetup] = useState(false);
+  const [showLayoutMenu, setShowLayoutMenu] = useState(false);
   const [paperFormat, setPaperFormat] = useState('a4'); // 'a4' or 'a3'
   const [orientation, setOrientation] = useState('portrait'); // 'portrait' or 'landscape'
+  const [chartLayout, setChartLayout] = useState('classic'); // 'classic', 'org', 'mindmap'
   const [scale, setScale] = useState(1);
   const chartRef = useRef(null);
   const containerRef = useRef(null);
@@ -97,7 +99,7 @@ function App() {
     chart.style.width = `${PAPER_DIMENSIONS[paperFormat][orientation].width}px`;
     chart.style.height = `${PAPER_DIMENSIONS[paperFormat][orientation].height}px`;
     chart.style.transform = `scale(${newScale})`;
-  }, [paperFormat, orientation, data]);
+  }, [paperFormat, orientation, data, chartLayout]);
 
   useLayoutEffect(() => {
     updateScale();
@@ -110,7 +112,7 @@ function App() {
       window.removeEventListener('resize', updateScale);
       observer.disconnect();
     };
-  }, [updateScale, data, editMode, viewMode]);
+  }, [updateScale, data, editMode, viewMode, chartLayout]);
 
   const updateNode = useCallback((id, updates) => {
     setData(prev => {
@@ -257,135 +259,182 @@ function App() {
   };
 
   return (
-    <div className="h-screen w-screen flex flex-col mesh-gradient overflow-hidden">
-      <header className="glass-card z-50 mx-6 mt-6 p-4 rounded-2xl flex items-center justify-between gap-4 flex-shrink-0">
-        <div className="flex flex-col">
-          <h1 className="text-xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-            <span className="bg-gradient-to-tr from-blue-600 to-indigo-600 text-white p-2 rounded-xl shadow-lg shadow-blue-200 flex items-center justify-center">
-              <FileText size={20} />
-            </span>
-            {editMode ? (
-              <input
-                value={data.name}
-                onChange={(e) => updateNode('root', { name: e.target.value })}
-                className="bg-transparent border-none outline-none focus:ring-0 w-64 text-xl font-extrabold"
-                placeholder="Chart Title"
-              />
-            ) : <span className="text-xl font-black bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600">{data.name}</span>}
-          </h1>
+    <div className="min-h-screen mesh-gradient flex flex-col font-sans selection:bg-primary/20">
+      {/* Premium Header/Toolbar */}
+      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-white/50 shadow-sm px-6 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary/30">
+            <FileText size={20} />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-slate-800 leading-tight">Solar Chart Builder</h1>
+            <p className="text-xs text-slate-500 font-medium">Halabja Solar Infrastructure</p>
+          </div>
         </div>
 
-        <div className="relative">
+        {/* Central Controls Group */}
+        <div className="flex items-center gap-2 p-1.5 bg-slate-100/50 rounded-2xl border border-slate-200/50 backdrop-blur-md">
+
+          {/* Chart Layout Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => { setShowLayoutMenu(!showLayoutMenu); setShowPageSetup(false); setShowDownloadMenu(false); }}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${showLayoutMenu ? 'bg-white shadow-sm text-slate-800' : 'text-slate-600 hover:bg-white/50 hover:text-slate-800'}`}
+            >
+              <div className="w-4 h-4 rounded-sm border-2 border-current grid grid-cols-2 gap-0.5 p-0.5">
+                <div className="bg-current rounded-[1px]" /><div className="bg-current rounded-[1px]" /><div className="bg-current rounded-[1px]" />
+              </div>
+              Layout: {chartLayout === 'classic' ? 'Cascading WBS' : chartLayout === 'org' ? 'Organization' : 'Mindmap'}
+            </button>
+            <AnimatePresence>
+              {showLayoutMenu && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                  className="absolute top-full mt-2 left-0 w-56 bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/50 p-2 z-50 overflow-hidden"
+                >
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 px-3 pt-2">Chart Design</div>
+                  {[
+                    { id: 'classic', label: 'Cascading WBS', desc: 'Standard project breakdown' },
+                    { id: 'org', label: 'Organization Chart', desc: 'Horizontal branching tree' },
+                    { id: 'mindmap', label: 'Vertical Mindmap', desc: 'Radiating hub and spoke' }
+                  ].map(layout => (
+                    <button
+                      key={layout.id}
+                      onClick={() => { setChartLayout(layout.id); setShowLayoutMenu(false); }}
+                      className={`w-full flex flex-col items-start px-3 py-2.5 rounded-xl transition-all ${chartLayout === layout.id ? 'bg-primary/10 text-primary' : 'hover:bg-slate-50 text-slate-700'}`}
+                    >
+                      <span className="font-semibold text-sm">{layout.label}</span>
+                      <span className="text-[10px] opacity-70">{layout.desc}</span>
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <div className="w-px h-6 bg-slate-200/50 mx-1" />
+
+          {/* Page Setup Menu */}
+          <div className="relative">
+            <button
+              onClick={() => { setShowPageSetup(!showPageSetup); setShowLayoutMenu(false); setShowDownloadMenu(false); }}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${showPageSetup ? 'bg-white shadow-sm text-slate-800' : 'text-slate-600 hover:bg-white/50 hover:text-slate-800'}`}
+            >
+              <Monitor size={16} />
+              Page: {paperFormat.toUpperCase()} {orientation.charAt(0).toUpperCase() + orientation.slice(1)}
+            </button>
+            <AnimatePresence>
+              {showPageSetup && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                  className="absolute top-full mt-2 left-1/2 -translate-x-1/2 w-64 bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/50 p-4 z-50"
+                >
+                  <div className="mb-4">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">Paper Formats</label>
+                    <div className="flex bg-slate-100/50 p-1 rounded-xl">
+                      {['a4', 'a3'].map((format) => (
+                        <button
+                          key={format}
+                          onClick={() => setPaperFormat(format)}
+                          className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${paperFormat === format ? 'bg-white shadow text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                          {format.toUpperCase()}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">Orientation</label>
+                    <div className="flex bg-slate-100/50 p-1 rounded-xl">
+                      {['portrait', 'landscape'].map((ori) => (
+                        <button
+                          key={ori}
+                          onClick={() => setOrientation(ori)}
+                          className={`flex-1 flex justify-center items-center py-1.5 rounded-lg transition-all ${orientation === ori ? 'bg-white shadow text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}
+                          title={ori}
+                        >
+                          <div className={`border-2 border-inherit rounded-sm ${ori === 'portrait' ? 'w-3 h-4' : 'w-4 h-3'}`} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <div className="w-px h-6 bg-slate-200/50 mx-1" />
+
+          {/* Edit Mode Toggle */}
           <button
-            onClick={() => setShowPageSetup(!showPageSetup)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm border transition-all ${showPageSetup ? 'bg-slate-100 border-slate-300' : 'bg-white border-slate-200 hover:bg-slate-50'}`}
+            onClick={() => setEditMode(!editMode)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${editMode ? 'bg-blue-500 text-white shadow-md shadow-blue-500/20' : 'text-slate-600 hover:bg-white/50 hover:text-slate-800'}`}
           >
-            <Monitor size={18} />
-            Page Setup
+            {editMode ? <Check size={16} /> : <Edit3 size={16} />}
+            {editMode ? 'Done Editing' : 'Edit Chart'}
           </button>
-          <AnimatePresence>
-            {showPageSetup && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
-                className="absolute right-0 mt-2 w-64 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden z-[100] p-4 flex flex-col gap-4"
-              >
-                <div className="flex flex-col gap-2">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Paper Size</span>
-                  <div className="flex p-1 bg-slate-100 rounded-lg">
-                    {['a4', 'a3'].map(size => (
-                      <button
-                        key={size}
-                        onClick={() => setPaperFormat(size)}
-                        className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${paperFormat === size ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
-                      >
-                        {size.toUpperCase()}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Orientation</span>
-                  <div className="flex p-1 bg-slate-100 rounded-lg">
-                    {['portrait', 'landscape'].map(o => (
-                      <button
-                        key={o}
-                        onClick={() => setOrientation(o)}
-                        className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${orientation === o ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
-                      >
-                        {o.charAt(0).toUpperCase() + o.slice(1)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
 
-        <div className="h-8 w-px bg-slate-200" />
+        {/* Action Controls */}
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <button
+              onClick={() => { setShowDownloadMenu(!showDownloadMenu); setShowPageSetup(false); setShowLayoutMenu(false); }}
+              disabled={isDownloading}
+              className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl text-sm font-semibold shadow-lg shadow-slate-900/20 transition-all active:scale-95 disabled:opacity-70 disabled:pointer-events-none"
+            >
+              {isDownloading ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+              {isDownloading ? 'Generating...' : 'Export'}
+            </button>
 
-        <button
-          onClick={() => setEditMode(!editMode)}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all ${editMode
-            ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200 hover:bg-emerald-600'
-            : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
-            }`}
-        >
-          {editMode ? <><Check size={18} /> Done</> : <><Edit3 size={18} /> Edit Chart</>}
-        </button>
-
-        <div className="relative">
-          <button
-            onClick={() => setShowDownloadMenu(!showDownloadMenu)}
-            disabled={isDownloading}
-            className="flex items-center gap-2 px-6 py-2 rounded-xl font-bold text-sm bg-blue-600 text-white shadow-xl shadow-blue-200 hover:bg-blue-700 disabled:opacity-50 transition-all active:scale-95"
-          >
-            {isDownloading ? (
-              <><Loader2 className="animate-spin" size={18} /> Generating...</>
-            ) : (
-              <><Download size={18} /> Download</>
-            )}
-          </button>
-
-          <AnimatePresence>
-            {showDownloadMenu && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
-                className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden z-[100]"
-              >
-                <div className="p-2 border-b border-slate-100 bg-slate-50">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2">PDF Formats</span>
-                </div>
-                <button onClick={() => handleDownload('pdf')} className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 flex items-center gap-2">
-                  <FileText size={16} className="text-red-500" /> A4 Portrait
-                </button>
-                <button onClick={() => handleDownload('pdf', { orientation: 'l' })} className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 flex items-center gap-2 border-b border-slate-100">
-                  <FileText size={16} className="text-red-500" /> A4 Landscape
-                </button>
-
-                <div className="p-2 border-b border-slate-100 bg-slate-50">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2">Image Formats</span>
-                </div>
-                <button onClick={() => handleDownload('png')} className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 flex items-center gap-2">
-                  <ImageIcon size={16} className="text-blue-500" /> PNG Image
-                </button>
-                <button onClick={() => handleDownload('jpeg')} className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 flex items-center gap-2">
-                  <ImageIcon size={16} className="text-blue-500" /> JPG High Quality
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
+            <AnimatePresence>
+              {showDownloadMenu && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                  className="absolute top-full mt-2 right-0 w-56 bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/50 p-2 z-50 overflow-hidden"
+                >
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 px-3 pt-2">PDF Formats</div>
+                  <button onClick={() => handleDownload('pdf')} className="w-full text-left px-3 py-2.5 text-sm font-medium hover:bg-slate-50 flex items-center gap-2 rounded-xl">
+                    <FileText size={16} className="text-red-500" /> PDF (Current View)
+                  </button>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider my-2 px-3 pt-2">Image Formats</div>
+                  <button onClick={() => handleDownload('png')} className="w-full text-left px-3 py-2.5 text-sm font-medium hover:bg-slate-50 flex items-center gap-2 rounded-xl">
+                    <ImageIcon size={16} className="text-blue-500" /> PNG Image
+                  </button>
+                  <button onClick={() => handleDownload('jpeg')} className="w-full text-left px-3 py-2.5 text-sm font-medium hover:bg-slate-50 flex items-center gap-2 rounded-xl">
+                    <ImageIcon size={16} className="text-blue-500" /> JPG High Quality
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </header>
 
+      {/* Main Workspace */}
       <main
         ref={containerRef}
-        className="flex-1 relative flex justify-center items-center p-4 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:24px_24px] overflow-hidden"
+        className="flex-1 overflow-hidden relative p-8 isolate flex items-start justify-center"
       >
+        <div
+          className="absolute inset-0 z-[-1]"
+          style={{
+            backgroundImage: 'radial-gradient(circle at center, var(--slate-200) 1px, transparent 1px)',
+            backgroundSize: '40px 40px',
+            opacity: 0.4
+          }}
+        />
+
+        {/* Paper Container */}
         <div
           ref={chartRef}
           data-chart-container
@@ -393,10 +442,10 @@ function App() {
             width: `${PAPER_DIMENSIONS[paperFormat][orientation].width}px`,
             height: `${PAPER_DIMENSIONS[paperFormat][orientation].height}px`,
             transform: `scale(${scale})`,
-            transformOrigin: 'center center',
-            transition: isDownloading ? 'none' : 'transform 0.3s ease-out'
+            transformOrigin: 'top center',
+            transition: isDownloading ? 'none' : 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'
           }}
-          className="bg-white/40 rounded-3xl p-12 transition-all duration-500 shadow-inner overflow-hidden flex flex-col items-center justify-center"
+          className="bg-white/80 backdrop-blur-3xl rounded-[2rem] p-16 transition-all duration-700 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] overflow-hidden flex flex-col items-center justify-start border border-white"
         >
           <ChartNode
             node={data}
@@ -405,15 +454,21 @@ function App() {
             onAddChild={addChild}
             onDelete={deleteNode}
             editMode={editMode}
+            chartLayout={chartLayout}
           />
         </div>
       </main>
 
-      <footer className="p-3 text-center text-slate-400 text-[10px] font-semibold border-t border-slate-100 bg-white flex-shrink-0">
+      <footer className="p-4 text-center text-slate-400 text-[10px] font-bold tracking-widest uppercase border-t border-slate-200/50 bg-white/50 backdrop-blur-md flex-shrink-0 z-10 relative">
         Solar Chart Builder • Built for Halabja Solar • &copy; 2026
       </footer>
 
-      {(showDownloadMenu || showPageSetup) && <div className="fixed inset-0 z-[60]" onClick={() => { setShowDownloadMenu(false); setShowPageSetup(false); }} />}
+      {(showDownloadMenu || showPageSetup || showLayoutMenu) && (
+        <div
+          className="fixed inset-0 z-[49] bg-slate-900/5 backdrop-blur-[1px]"
+          onClick={() => { setShowDownloadMenu(false); setShowPageSetup(false); setShowLayoutMenu(false); }}
+        />
+      )}
     </div >
   );
 }
