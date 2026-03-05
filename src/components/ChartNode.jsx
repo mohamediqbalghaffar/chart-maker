@@ -92,10 +92,10 @@ const ChartNode = ({ node, level, onUpdate, onAddChild, onDelete, editMode }) =>
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
                         transition={{ duration: 0.4 }}
-                        className={`flex ${isDeepLevel ? 'flex-row flex-wrap justify-center gap-4' : 'flex-col gap-3'} ml-4 border-l-2 border-slate-100/50 pl-4 py-2 mt-2`}
+                        className={`flex ${isDeepLevel ? 'flex-row flex-wrap justify-center gap-4 ml-0 pl-0 border-l-0' : 'flex-col gap-3 ml-4 border-l-2 border-slate-100/50 pl-4'} py-2 mt-2`}
                     >
                         {node.children.map((child, index) => (
-                            <div key={child.id} className={isDeepLevel ? 'min-w-[280px] max-w-[320px] flex-1' : ''}>
+                            <div key={child.id} className={isDeepLevel ? 'min-w-[200px] max-w-[280px] flex-1' : ''}>
                                 <ChartNode
                                     node={child}
                                     level={level + 1}

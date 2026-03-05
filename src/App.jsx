@@ -72,22 +72,32 @@ function App() {
     const chart = chartRef.current;
 
     const originalTransform = chart.style.transform;
+    const originalWidth = chart.style.width;
+    const originalHeight = chart.style.height;
+
     chart.style.transform = 'none';
+    chart.style.width = 'auto';
+    chart.style.height = 'auto';
 
+    // Measure unconstrained content size
+    const contentWidth = chart.scrollWidth;
+    const contentHeight = chart.scrollHeight;
+
+    // Target paper dimensions minus padding
     const paperDims = PAPER_DIMENSIONS[paperFormat][orientation];
-    const targetWidth = paperDims.width;
-    const targetHeight = paperDims.height;
+    const targetWidth = paperDims.width - 80; // 40px internal padding * 2
+    const targetHeight = paperDims.height - 80;
 
-    const containerWidth = container.offsetWidth - 80;
-    const containerHeight = container.offsetHeight - 80;
-
-    const scaleX = containerWidth / targetWidth;
-    const scaleY = containerHeight / targetHeight;
+    const scaleX = targetWidth / contentWidth;
+    const scaleY = targetHeight / contentHeight;
     const newScale = Math.min(Math.min(scaleX, scaleY), 1);
 
     setScale(newScale);
+
     chart.style.transform = originalTransform;
-  }, [paperFormat, orientation]);
+    chart.style.width = originalWidth;
+    chart.style.height = originalHeight;
+  }, [paperFormat, orientation, data]);
 
   useLayoutEffect(() => {
     updateScale();
@@ -386,7 +396,7 @@ function App() {
             transformOrigin: 'center center',
             transition: isDownloading ? 'none' : 'transform 0.3s ease-out'
           }}
-          className="bg-white/40 rounded-3xl p-12 transition-all duration-500 shadow-inner overflow-auto flex flex-col items-center justify-start"
+          className="bg-white/40 rounded-3xl p-12 transition-all duration-500 shadow-inner overflow-hidden flex flex-col items-center justify-center"
         >
           <ChartNode
             node={data}
