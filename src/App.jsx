@@ -57,48 +57,63 @@ function App() {
   const [showPageSetup, setShowPageSetup] = useState(false);
   const [showLayoutMenu, setShowLayoutMenu] = useState(false);
   const [paperFormat, setPaperFormat] = useState('a4'); // 'a4' or 'a3'
-  const [orientation, setOrientation] = useState('portrait'); // 'portrait' or 'landscape'
-  const [chartLayout, setChartLayout] = useState('classic'); // 'classic', 'org', 'mindmap'
-  const [scale, setScale] = useState(1);
-  const chartRef = useRef(null);
-  const containerRef = useRef(null);
+  const [orientation, setOrientation] = useState('landscape'); // 'portrait' or 'landscape'
+  const [chartLayout, setChartLayout] = useState('org'); // 'classic', 'org', 'mindmap'
+  const [contentScale, setContentScale] = useState(1);
+  const [viewScale, setViewScale] = useState(1);
+
+  const chartRef = useRef(null); // This will be the "paper" container
+  const contentRef = useRef(null); // This will be the actual chart content
+  const containerRef = useRef(null); // This will be the scrollable viewport
 
   useEffect(() => {
     localStorage.setItem('wbs_data', JSON.stringify(data));
   }, [data]);
 
   const updateScale = useCallback(() => {
-    if (!containerRef.current || !chartRef.current) return;
+    if (!containerRef.current || !chartRef.current || !contentRef.current) return;
 
-    const chart = chartRef.current;
+    const main = containerRef.current;
+    const paper = chartRef.current;
+    const content = contentRef.current;
 
-    // 1. Reset scale to measure true natural size
-    chart.style.transform = 'scale(1)';
-    chart.style.width = 'max-content'; // Allow it to expand to its full natural width
-    chart.style.height = 'auto';
+    // 1. Reset content scale to measure true natural size
+    content.style.transform = 'scale(1)';
 
     // 2. Add a tiny delay or use offset to get real dimensions after layout
-    const contentWidth = chart.scrollWidth;
-    const contentHeight = chart.scrollHeight;
+    const naturalWidth = content.scrollWidth;
+    const naturalHeight = content.scrollHeight;
 
-    // 3. Define the target area (Paper size minus 80px total padding)
+    // 3. Define the target area inside the paper (60px total margin on each side)
     const paperDims = PAPER_DIMENSIONS[paperFormat][orientation];
-    const targetWidth = paperDims.width - 120; // 60px margin on each side
-    const targetHeight = paperDims.height - 120;
+    const targetContentWidth = paperDims.width - 120; // 60px * 2
+    const targetContentHeight = paperDims.height - 120; // 60px * 2
 
-    // 4. Calculate the perfect scale factor to fit BOTH dimensions
-    const scaleX = targetWidth / contentWidth;
-    const scaleY = targetHeight / contentHeight;
+    // 4. Calculate content scale factor
+    const scaleX = targetContentWidth / Math.max(naturalWidth, 1);
+    const scaleY = targetContentHeight / Math.max(naturalHeight, 1);
 
-    // Force a fit (never go above 1.1x to avoid blurriness, but ALWAYS fit if larger)
-    const newScale = Math.min(scaleX, scaleY);
+    // Force a fit (never go above 1.0 to avoid blurriness, but ALWAYS fit if larger)
+    const newContentScale = Math.min(scaleX, scaleY, 1.0);
+    setContentScale(newContentScale);
 
-    setScale(newScale);
+    // 5. Calculate view scale factor to fit the paper into the screen
+    const mainWidth = main.clientWidth;
+    const mainHeight = main.clientHeight;
 
-    // 5. Restore fixed dimensions for the "Paper" effect
-    chart.style.width = `${PAPER_DIMENSIONS[paperFormat][orientation].width}px`;
-    chart.style.height = `${PAPER_DIMENSIONS[paperFormat][orientation].height}px`;
-    chart.style.transform = `scale(${newScale})`;
+    const targetViewWidth = mainWidth - 64; // 32px padding edges
+    const targetViewHeight = mainHeight - 64;
+
+    const vScaleX = targetViewWidth / paperDims.width;
+    const vScaleY = targetViewHeight / paperDims.height;
+
+    const newViewScale = Math.min(vScaleX, vScaleY, 1.0);
+    setViewScale(newViewScale);
+
+    // Apply inline immediately
+    content.style.transform = `scale(${newContentScale})`;
+    paper.style.transform = `scale(${newViewScale})`;
+
   }, [paperFormat, orientation, data, chartLayout]);
 
   useLayoutEffect(() => {
@@ -175,45 +190,37 @@ function App() {
       const element = chartRef.current;
       const originalTransform = element.style.transform;
 
-      // Calculate target dimensions for "force fitting"
-      // Using standard 96 DPI for CSS pixels
-      const mmToPx = 3.78;
-      const dims = {
-        a4: { p: [210, 297], l: [297, 210] },
-        a3: { p: [297, 420], l: [420, 297] }
-      };
-
-      const currentOrientation = (options.orientation || orientation) === 'portrait' ? 'p' : 'l';
-      const [wMm, hMm] = dims[paperFormat][currentOrientation];
-      const targetWidth = wMm * mmToPx;
-      const targetHeight = hMm * mmToPx;
+      const currentOrientation = (options.orientation || orientation) === 'portrait' ? 'portrait' : 'landscape';
+      const paperDims = PAPER_DIMENSIONS[paperFormat][currentOrientation];
+      const targetWidth = paperDims.width;
+      const targetHeight = paperDims.height;
 
       element.style.transform = 'none';
 
       const canvas = await html2canvas(element, {
         scale: 3,
         useCORS: true,
-        backgroundColor: '#f8fafc',
+        backgroundColor: '#ffffff',
         logging: false,
         width: targetWidth,
         height: targetHeight,
+        windowWidth: targetWidth,
+        windowHeight: targetHeight,
         onclone: (clonedDoc) => {
           const clonedElement = clonedDoc.querySelector('[data-chart-container]');
           if (clonedElement) {
             clonedElement.style.transform = 'none';
             clonedElement.style.width = `${targetWidth}px`;
             clonedElement.style.height = `${targetHeight}px`;
-            clonedElement.style.padding = '40px';
-            clonedElement.style.display = 'flex';
-            clonedElement.style.flexDirection = 'column';
-            clonedElement.style.alignItems = 'center';
-            clonedElement.style.justifyContent = 'center';
+            clonedElement.style.borderRadius = '0';
+            clonedElement.style.border = 'none';
+            clonedElement.style.boxShadow = 'none';
 
             // Force animations and glass effects to clear
             clonedElement.querySelectorAll('*').forEach(el => {
               el.style.animation = 'none';
               el.style.transition = 'none';
-              el.style.backdropFilter = 'none';
+              if (el.style.backdropFilter) el.style.backdropFilter = 'none';
             });
           }
         }
@@ -227,22 +234,17 @@ function App() {
 
       if (format === 'pdf') {
         const pdf = new jsPDF({
-          orientation: currentOrientation,
+          orientation: currentOrientation === 'portrait' ? 'p' : 'l',
           unit: 'mm',
           format: paperFormat
         });
 
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        const imgData = canvas.toDataURL('image/jpeg', 1.0);
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = pdf.internal.pageSize.getHeight();
 
-        pdf.setFontSize(20);
-        pdf.setTextColor(30, 41, 59);
-        pdf.text(data.name, pdfWidth / 2, 15, { align: 'center' });
-
-        // Use full page minus small margins for the chart
-        const margin = 5;
-        pdf.addImage(imgData, 'JPEG', margin, 25, pdfWidth - (margin * 2), pdfHeight - 35, undefined, 'FAST');
+        // Print full bleed onto the exact paper size
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
         pdf.save(`${filename}.pdf`);
       } else {
         const link = document.createElement('a');
@@ -423,39 +425,52 @@ function App() {
       {/* Main Workspace */}
       <main
         ref={containerRef}
-        className="flex-1 overflow-hidden relative p-8 isolate flex items-start justify-center"
+        className="flex-1 overflow-hidden relative p-8 isolate flex items-center justify-center bg-[#f0f2f5]"
       >
         <div
           className="absolute inset-0 z-[-1]"
           style={{
-            backgroundImage: 'radial-gradient(circle at center, var(--slate-200) 1px, transparent 1px)',
-            backgroundSize: '40px 40px',
-            opacity: 0.4
+            backgroundImage: 'radial-gradient(circle at center, #cbd5e1 1px, transparent 1px)',
+            backgroundSize: '32px 32px',
+            opacity: 0.5
           }}
         />
 
-        {/* Paper Container */}
+        {/* Paper Container - The target for html2canvas */}
         <div
           ref={chartRef}
           data-chart-container
           style={{
             width: `${PAPER_DIMENSIONS[paperFormat][orientation].width}px`,
             height: `${PAPER_DIMENSIONS[paperFormat][orientation].height}px`,
-            transform: `scale(${scale})`,
-            transformOrigin: 'top center',
+            transform: `scale(${viewScale})`,
+            transformOrigin: 'center center',
             transition: isDownloading ? 'none' : 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'
           }}
-          className="bg-white/80 backdrop-blur-3xl rounded-[2rem] p-16 transition-all duration-700 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] overflow-hidden flex flex-col items-center justify-start border border-white"
+          className="bg-white shadow-[0_0_50px_rgba(0,0,0,0.1),_0_0_2px_rgba(0,0,0,0.1)] overflow-hidden flex flex-col items-center justify-start border border-slate-200"
         >
-          <ChartNode
-            node={data}
-            level={0}
-            onUpdate={updateNode}
-            onAddChild={addChild}
-            onDelete={deleteNode}
-            editMode={editMode}
-            chartLayout={chartLayout}
-          />
+          {/* Scaled Chart Content */}
+          <div
+            ref={contentRef}
+            style={{
+              transform: `scale(${contentScale})`,
+              transformOrigin: 'top center',
+              width: 'max-content',
+              marginTop: '60px',
+              transition: isDownloading ? 'none' : 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'
+            }}
+            className="flex flex-col items-center"
+          >
+            <ChartNode
+              node={data}
+              level={0}
+              onUpdate={updateNode}
+              onAddChild={addChild}
+              onDelete={deleteNode}
+              editMode={editMode}
+              chartLayout={chartLayout}
+            />
+          </div>
         </div>
       </main>
 
