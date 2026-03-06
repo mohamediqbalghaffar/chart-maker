@@ -225,12 +225,21 @@ function App() {
     setIsDownloading(true);
     setShowDownloadMenu(false);
 
-    // Give the UI a moment to close the menu and update state
+    // Give the UI a moment to close the menu
     await new Promise(resolve => setTimeout(resolve, 100));
 
     try {
       const element = chartRef.current;
       const originalTransform = element.style.transform;
+
+      // Temporarily stash user interactions to lock the view in its "perfect fit" state
+      const stashPan = { ...userPan };
+      const stashScale = userScale;
+      setUserPan({ x: 0, y: 0 });
+      setUserScale(1);
+
+      // Give React a tick to mathematically center the board before capturing it
+      await new Promise(resolve => setTimeout(resolve, 300));
 
       const currentOrientation = (options.orientation || orientation) === 'portrait' ? 'portrait' : 'landscape';
       const paperDims = PAPER_DIMENSIONS[paperFormat][currentOrientation];
@@ -294,12 +303,44 @@ function App() {
         link.href = canvas.toDataURL(`image/${format}`, 1.0);
         link.click();
       }
+
+      // Restore user interaction boundaries
+      setUserPan(stashPan);
+      setUserScale(stashScale);
     } catch (err) {
       console.error('Download failed:', err);
       alert('Download failed. Please try again.');
     } finally {
       setIsDownloading(false);
     }
+  };
+
+  const handleExportText = () => {
+    let textContent = '';
+
+    const recurseNode = (node, indentLevel) => {
+      const indent = '  '.repeat(indentLevel);
+      textContent += `${indent}${node.code} ${node.name}\n`;
+      if (node.children && node.children.length > 0) {
+        node.children.forEach(child => recurseNode(child, indentLevel + 1));
+      }
+    };
+
+    recurseNode(data, 0);
+
+    const blob = new Blob([textContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    const title = data.name.replace(/\s+/g, '_') || 'chart';
+    const timestamp = new Date().toISOString().split('T')[0];
+
+    link.href = url;
+    link.download = `${title}_${timestamp}_outline.txt`;
+    link.click();
+
+    URL.revokeObjectURL(url);
+    setShowDownloadMenu(false);
   };
 
   return (
@@ -456,6 +497,10 @@ function App() {
                   </button>
                   <button onClick={() => handleDownload('jpeg')} className="w-full text-left px-3 py-2.5 text-sm font-medium hover:bg-slate-50 flex items-center gap-2 rounded-xl">
                     <ImageIcon size={16} className="text-blue-500" /> JPG High Quality
+                  </button>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider my-2 px-3 pt-2">Data Formats</div>
+                  <button onClick={handleExportText} className="w-full text-left px-3 py-2.5 text-sm font-medium hover:bg-slate-50 flex items-center gap-2 rounded-xl">
+                    <FileText size={16} className="text-slate-500" /> TXT Outline
                   </button>
                 </motion.div>
               )}
