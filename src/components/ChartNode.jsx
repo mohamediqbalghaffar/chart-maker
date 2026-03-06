@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ChevronRight, ChevronDown, Plus, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const ChartNode = ({ node, level, onUpdate, onAddChild, onDelete, editMode, chartLayout = 'classic' }) => {
+const ChartNode = ({ node, parentId, level, onUpdate, onAddChild, onDelete, editMode, chartLayout = 'classic' }) => {
     const [isExpanded, setIsExpanded] = useState(true);
     const hasChildren = node.children && node.children.length > 0;
 
@@ -24,16 +24,16 @@ const ChartNode = ({ node, level, onUpdate, onAddChild, onDelete, editMode, char
 
     const levelClass = getColorClass(level);
 
-    // Dynamic styling based on layout type
+    // Dynamic styling based on layout type (Removed solid CSS borders, relying on ChartLines SVG)
     const wrapperClass = isOrgChart ? "flex flex-col items-center mb-6 relative"
         : isMindmap ? "flex flex-col items-center mb-4 relative"
             : `flex flex-col mb-4 relative ${isDeepClassic ? 'w-[300px]' : ''}`;
 
-    const childrenContainerClass = isOrgChart ? "flex flex-row flex-wrap justify-center gap-6 pt-6 relative border-t-2 border-slate-200 mt-2"
-        : isMindmap ? "flex flex-row flex-wrap justify-center gap-8 mt-4"
-            : `flex ${isDeepClassic ? 'flex-row flex-wrap justify-center gap-6 ml-0 pl-0 border-l-0' : 'flex-col gap-3 ml-4 border-l-2 border-slate-100/50 pl-4'} py-2 mt-2`;
+    const childrenContainerClass = isOrgChart ? "flex flex-row flex-wrap justify-center gap-6 mt-2 relative"
+        : isMindmap ? "flex flex-row flex-wrap justify-center gap-8 mt-4 relative"
+            : `flex ${isDeepClassic ? 'flex-row flex-wrap justify-center gap-6 ml-0 pl-0' : 'flex-col gap-3 py-2 mt-2'} relative`;
 
-    const childItemClass = isOrgChart ? "relative flex flex-col items-center before:content-[''] before:absolute before:-top-6 before:left-1/2 before:w-0.5 before:h-6 before:bg-slate-200"
+    const childItemClass = isOrgChart ? "relative flex flex-col items-center"
         : isMindmap ? "relative min-w-[200px]"
             : isDeepClassic ? 'min-w-[200px] max-w-[280px] flex-1' : '';
 
@@ -43,6 +43,30 @@ const ChartNode = ({ node, level, onUpdate, onAddChild, onDelete, editMode, char
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             className={wrapperClass}
+            drag={!editMode}
+            dragMomentum={false}
+            onPointerDown={(e) => e.stopPropagation()}
+            data-node-id={node.id}
+            data-parent-id={parentId}
+            style={{
+                x: node.position?.x || 0,
+                y: node.position?.y || 0,
+                zIndex: 10
+            }}
+            onDragEnd={(e, info) => {
+                const content = document.querySelector('[data-chart-content]');
+                let scale = 1;
+                if (content) {
+                    const contentRect = content.getBoundingClientRect();
+                    scale = contentRect.width / content.offsetWidth;
+                }
+                const newX = (node.position?.x || 0) + info.offset.x / scale;
+                const newY = (node.position?.y || 0) + info.offset.y / scale;
+                onUpdate(node.id, { position: { x: newX, y: newY } });
+            }}
+            onDragStart={(e) => {
+                e.target.style.zIndex = 50;
+            }}
         >
             <div
                 className={`
@@ -113,22 +137,13 @@ const ChartNode = ({ node, level, onUpdate, onAddChild, onDelete, editMode, char
                         transition={{ duration: 0.3 }}
                         className={isOrgChart ? "flex flex-row justify-center relative mt-8" : childrenContainerClass}
                     >
-                        {isOrgChart && (
-                            <div className="absolute -top-8 left-1/2 -ml-[1px] w-[2px] h-8 bg-slate-300" />
-                        )}
-                        {node.children.map((child, index) => {
+                        {node.children.map((child) => {
                             if (isOrgChart) {
                                 return (
                                     <div key={child.id} className="relative flex flex-col items-center px-4 pt-8">
-                                        {node.children.length > 1 && (
-                                            <div className={`absolute top-0 h-[2px] bg-slate-300 ${index === 0 ? 'left-1/2 right-0' :
-                                                    index === node.children.length - 1 ? 'left-0 right-1/2' :
-                                                        'left-0 right-0'
-                                                }`} />
-                                        )}
-                                        <div className="absolute top-0 left-1/2 -ml-[1px] w-[2px] h-8 bg-slate-300" />
                                         <ChartNode
                                             node={child}
+                                            parentId={node.id}
                                             level={level + 1}
                                             onUpdate={onUpdate}
                                             onAddChild={onAddChild}
@@ -144,6 +159,7 @@ const ChartNode = ({ node, level, onUpdate, onAddChild, onDelete, editMode, char
                                 <div key={child.id} className={childItemClass}>
                                     <ChartNode
                                         node={child}
+                                        parentId={node.id}
                                         level={level + 1}
                                         onUpdate={onUpdate}
                                         onAddChild={onAddChild}

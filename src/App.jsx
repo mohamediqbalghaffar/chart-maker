@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react';
 import ChartNode from './components/ChartNode';
+import ChartLines from './components/ChartLines';
 import { Download, Edit3, Monitor, Tablet, Check, X, FileText, Image as ImageIcon, Loader2, Maximize } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
@@ -61,6 +62,10 @@ function App() {
   const [chartLayout, setChartLayout] = useState('org'); // 'classic', 'org', 'mindmap'
   const [contentScale, setContentScale] = useState(1);
   const [viewScale, setViewScale] = useState(1);
+  const [userScale, setUserScale] = useState(1);
+  const [userPan, setUserPan] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const lastPanPoint = useRef({ x: 0, y: 0 });
 
   const chartRef = useRef(null); // This will be the "paper" container
   const contentRef = useRef(null); // This will be the actual chart content
@@ -69,6 +74,48 @@ function App() {
   useEffect(() => {
     localStorage.setItem('wbs_data', JSON.stringify(data));
   }, [data]);
+
+  useEffect(() => {
+    const paper = chartRef.current;
+    if (!paper) return;
+
+    const handleWheel = (e) => {
+      e.preventDefault();
+      if (e.ctrlKey || e.metaKey) {
+        setUserScale(s => Math.min(Math.max(0.1, s - e.deltaY * 0.005), 5));
+      } else {
+        setUserPan(p => ({
+          x: p.x - e.deltaX,
+          y: p.y - e.deltaY
+        }));
+      }
+    };
+
+    paper.addEventListener('wheel', handleWheel, { passive: false });
+    return () => paper.removeEventListener('wheel', handleWheel);
+  }, []);
+
+  const handlePointerDown = useCallback((e) => {
+    if (e.button !== 0) return;
+    setIsPanning(true);
+    lastPanPoint.current = { x: e.clientX, y: e.clientY };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }, []);
+
+  const handlePointerMove = useCallback((e) => {
+    if (!isPanning) return;
+    const dx = e.clientX - lastPanPoint.current.x;
+    const dy = e.clientY - lastPanPoint.current.y;
+    setUserPan(p => ({ x: p.x + dx, y: p.y + dy }));
+    lastPanPoint.current = { x: e.clientX, y: e.clientY };
+  }, [isPanning]);
+
+  const handlePointerUp = useCallback((e) => {
+    setIsPanning(false);
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+  }, []);
 
   const updateScale = useCallback(() => {
     if (!containerRef.current || !chartRef.current || !contentRef.current) return;
@@ -109,11 +156,6 @@ function App() {
 
     const newViewScale = Math.min(vScaleX, vScaleY, 1.0);
     setViewScale(newViewScale);
-
-    // Apply inline immediately
-    content.style.transform = `scale(${newContentScale})`;
-    paper.style.transform = `scale(${newViewScale})`;
-
   }, [paperFormat, orientation, data, chartLayout]);
 
   useLayoutEffect(() => {
@@ -447,20 +489,26 @@ function App() {
             transformOrigin: 'center center',
             transition: isDownloading ? 'none' : 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'
           }}
-          className="bg-white shadow-[0_0_50px_rgba(0,0,0,0.1),_0_0_2px_rgba(0,0,0,0.1)] overflow-hidden flex flex-col items-center justify-start border border-slate-200"
+          className={`bg-white shadow-[0_0_50px_rgba(0,0,0,0.1),_0_0_2px_rgba(0,0,0,0.1)] overflow-hidden flex flex-col items-center justify-start border border-slate-200 relative ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
         >
           {/* Scaled Chart Content */}
           <div
             ref={contentRef}
+            data-chart-content
             style={{
-              transform: `scale(${contentScale})`,
+              transform: isDownloading ? `scale(${contentScale})` : `translate(${userPan.x}px, ${userPan.y}px) scale(${contentScale * userScale})`,
               transformOrigin: 'top center',
               width: 'max-content',
               marginTop: '60px',
-              transition: isDownloading ? 'none' : 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'
+              transition: isDownloading || isPanning ? 'none' : 'transform 0.1s ease-out'
             }}
-            className="flex flex-col items-center"
+            className="flex flex-col items-center relative"
           >
+            <ChartLines contentRef={contentRef} />
             <ChartNode
               node={data}
               level={0}
